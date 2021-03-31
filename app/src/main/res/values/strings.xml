@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Pomodore</string>
+    <string name="title">Pomodore</string>
+    <string name="botoniniciar">INICIAR</string>
+    <string name="pausatitulo">Pausa</string>
+    <string name="pausatexto">¿Que deseas hacer?</string>
+    <string name="ok">Reanudar</string>
+    <string name="cancel">Reiniciar</string>
+</resources>
