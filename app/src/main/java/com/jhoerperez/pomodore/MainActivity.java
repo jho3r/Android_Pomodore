@@ -5,6 +5,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -27,21 +28,30 @@ import android.widget.ImageView;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String INTENT_KEY_TRABAJO = "trabajo";
+    public static final String INTENT_KEY_TIEMPO = "cronometro";
+    public static final String INTENT_KEY_NPOMODORO = "npomodoros";
+    public static final String INTENT_KEY_IMAGE = "image";
+    public static final String INTENT_KEY_CONTANDO = "contando";
     Chronometer crono;
     Button btnIniciar;
     ImageView ivtomate;
     boolean contando = false;
-    boolean trabajo = true;
-    long tiempoTrabajo;
-    int nPomodoros = 0;
+    private boolean trabajo = true;
+    private long tiempoTrabajo;
+    private int nPomodoros = 0;
+    private int image;
 
     // Se va a usar un foreground service para mantener la app activa
     //https://developer.android.com/guide/components/foreground-services
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Log.d("Pomodore", "Inciando app oncreate");
 
         ivtomate = findViewById(R.id.ivTomate);
         btnIniciar = findViewById(R.id.btnIniciar);
@@ -53,13 +63,14 @@ public class MainActivity extends AppCompatActivity {
                 if(SystemClock.elapsedRealtime() - crono.getBase() >= 0){
                     crono.stop();
                     //Si completa cuatro pomodoros el tiempo de descanso es mayor
-                    if (trabajo == true){
+                    if (trabajo){
                         nPomodoros ++;
                         if (nPomodoros%4 == 0 && nPomodoros>0){
                             tiempoTrabajo = 20 * 60 * 1000;
                         }else {
                             tiempoTrabajo = 5 * 60 * 1000;
                         }
+                        image = R.drawable.rest;
                         ivtomate.setImageResource(R.drawable.rest);
                         Log.d("Pomodore","cambiando a descanso");
                         trabajo = false;
@@ -79,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
 
                     }else{
                         tiempoTrabajo = 25 * 60 * 1000;
+                        image = R.drawable.working;
                         ivtomate.setImageResource(R.drawable.working);
                         Log.d("Pomodore","cambiando a trabajo");
                         trabajo = true;
@@ -101,12 +113,22 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        Bundle extras = getIntent().getExtras();
+
+        if(extras != null){
+            Log.d("Pomodore","extras diferente de null");
+            recoverExtras(extras);
+        }
+
     }
+
+
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void iniciar(View v){
         tiempoTrabajo = 25 * 60 * 1000;
         if(contando == false){
+            image = R.drawable.working;
             ivtomate.setImageResource(R.drawable.working);
             btnIniciar.setVisibility(View.GONE);
             crono.setVisibility(View.VISIBLE);
@@ -152,17 +174,58 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         Log.d("Pomodore","App pausada");
-    }
+        if (contando){
+            long tiempoPausado = (crono.getBase() - SystemClock.elapsedRealtime());
+            Intent serviceIntent = new Intent(this, ExampleService.class);
+            serviceIntent.putExtra(INTENT_KEY_TIEMPO,tiempoPausado);
+            serviceIntent.putExtra(INTENT_KEY_TRABAJO,trabajo);
+            serviceIntent.putExtra(INTENT_KEY_NPOMODORO,nPomodoros);
+            serviceIntent.putExtra(INTENT_KEY_IMAGE,image);
+            startService(serviceIntent);
+        }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        Log.d("Pomodore","App parada");
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         Log.d("Pomodore","App resumida");
+
+        Intent serviceIntent = new Intent(this, ExampleService.class);
+        stopService(serviceIntent);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        finish();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void recoverExtras(Bundle extras) {
+
+        int contandoIntent = extras.getInt(INTENT_KEY_CONTANDO,0);
+
+        if (contandoIntent == 0){
+            return;
+        }else{
+            Log.d("Pomodore","Recuperando extras");
+            long tiempoPausado = extras.getLong(INTENT_KEY_TIEMPO,0);
+            trabajo = extras.getBoolean(INTENT_KEY_TRABAJO,true);
+            nPomodoros = extras.getInt(INTENT_KEY_NPOMODORO,0);
+            image = extras.getInt(INTENT_KEY_IMAGE,R.drawable.tomate);
+
+            Log.d("Pomodore","extras: tiempo: " + tiempoPausado + "trabajo: " + trabajo + "npomodoros: " + nPomodoros);
+
+            ivtomate.setImageResource(image);
+            btnIniciar.setVisibility(View.GONE);
+            crono.setVisibility(View.VISIBLE);
+            crono.setBase(SystemClock.elapsedRealtime()+(tiempoPausado-1000));
+            crono.setCountDown(true);
+            crono.start();
+            contando = true;
+        }
+
+
     }
 }

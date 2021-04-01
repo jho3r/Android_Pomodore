@@ -6,4 +6,6 @@
     <string name="pausatexto">¿Que deseas hacer?</string>
     <string name="ok">Reanudar</string>
     <string name="cancel">Reiniciar</string>
+    <string name="trabajo">Ciclo de trabajo</string>
+    <string name="descanso">Descanso</string>
 </resources>
